@@ -1,0 +1,18 @@
+order_rpy: 1
+forces: false
+torques: false
+times: true
+velocity_constraints: true
+points:
+  - att:
+      - 1.5
+      - 2
+      - 3
+    pos:
+      - 1.5
+      - 2
+      - 3
+---
+test_points:
+  name: Glados
+  isTurret: false

@@ -1,0 +1,10 @@
+<launch>
+
+  <arg name="namespace" default="geranos"/>
+
+  <group ns="$(arg namespace)">
+    <node name="geranos_planner" pkg="geranos_pole_trajectory" type="pole_trajectory_node" output="screen" clear_params="true">
+    </node>
+  </group>
+
+</launch>
