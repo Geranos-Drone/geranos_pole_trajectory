@@ -8,6 +8,7 @@
 #include <geometry_msgs/TransformStamped.h>
 
 #include <std_srvs/Empty.h>
+#include <omav_local_planner/ExecuteTrajectory.h>
 
 #include <Eigen/Eigen>
 
@@ -17,7 +18,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
- 
+
 
 
 namespace geranos_planner {
@@ -33,8 +34,11 @@ namespace geranos_planner {
 
   	void polePoseCallback(const geometry_msgs::TransformStamped pole_transform_msg);
 
-  	bool goToPoleSrv(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response);
+  	bool writeYamlFile(const YAML::Emitter& emitter);
 
+  	bool getTrajectoryToPole(const std::vector<double> &current_position, const std::vector<double> &pole_position);
+
+  	bool goToPoleSrv(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response);
 
   	ros::NodeHandle nh_;
 	ros::NodeHandle private_nh_;
@@ -44,12 +48,16 @@ namespace geranos_planner {
 
 	ros::ServiceServer go_to_pole_service_;
 	ros::ServiceServer grab_pole_service_;
+	ros::ServiceClient go_to_pole_client_;
 
 	mav_msgs::EigenOdometry current_odometry_;
 	Eigen::Vector3d current_position_W_;
 
 	mav_msgs::EigenTrajectoryPoint pole_trajectory_point_;
 	Eigen::Vector3d current_pole_position_W_;
+
+	std::string filename_;
+	YAML::Emitter emitter_;
 
   };
 }
