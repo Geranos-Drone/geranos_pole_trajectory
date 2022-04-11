@@ -5,17 +5,14 @@ namespace geranos_planner {
   PoleTrajectoryNode::PoleTrajectoryNode(const ros::NodeHandle& nh, const ros::NodeHandle& private_nh)
      :  nh_(nh),
         private_nh_(private_nh) {
-          ROS_INFO_STREAM("Constructor is called!");
-
           odometry_sub_ = nh_.subscribe(mav_msgs::default_topics::ODOMETRY, 1, &PoleTrajectoryNode::odometryCallback, this);
-
           pole_transform_sub_ = nh_.subscribe("pole_transform", 1, &PoleTrajectoryNode::polePoseCallback, this);
-
           go_to_pole_service_ = nh_.advertiseService("go_to_pole_service", &PoleTrajectoryNode::goToPoleSrv, this);
-
           go_to_pole_client_ = nh_.serviceClient<omav_local_planner::ExecuteTrajectory>("execute_trajectory");
+          grab_pole_service_ = nh_.advertiseService("grab_pole_service", &PoleTrajectoryNode::grabPoleSrv, this);
 
-          filename_ = "/home/tim/catkin_ws/src/mav_ui/omav_local_planner/resource/go_to_pole.yaml";
+          filename_go_to_pole_ = "/home/tim/catkin_ws/src/mav_ui/omav_local_planner/resource/go_to_pole.yaml";
+          filename_grab_pole_ = "/home/tim/catkin_ws/src/mav_ui/omav_local_planner/resource/grab_pole.yaml";
         }
 
   PoleTrajectoryNode::~PoleTrajectoryNode() {}
@@ -26,17 +23,24 @@ namespace geranos_planner {
     current_position_W_ = current_odometry_.position_W;
   }
 
-  void PoleTrajectoryNode::polePoseCallback(const geometry_msgs::TransformStamped pole_transform_msg) {
+  void PoleTrajectoryNode::polePoseCallback(const geometry_msgs::TransformStamped& pole_transform_msg) {
     ROS_INFO_ONCE("Received first transform of Pole!");
     mav_msgs::eigenTrajectoryPointFromTransformMsg(pole_transform_msg, &pole_trajectory_point_);
     current_pole_position_W_ = pole_trajectory_point_.position_W;
   }
 
-  bool PoleTrajectoryNode::writeYamlFile(const YAML::Emitter& emitter) {
+  bool PoleTrajectoryNode::writeYamlFile(const YAML::Emitter& emitter, const std::string& mode) {
     try
     {
       std::ofstream fout;
-      fout.open(filename_.c_str());
+      if (mode == " go_to_pole")
+        fout.open(filename_go_to_pole_.c_str());
+      else if (mode == "grab_pole")
+        fout.open(filename_go_to_pole_.c_str());
+      else {
+        ROS_ERROR_STREAM("Could not write yaml file, wrong mode!");
+        return false;
+      }
       fout << emitter.c_str();
       fout.close();
       return true;
@@ -48,11 +52,25 @@ namespace geranos_planner {
     }
   }
 
-  bool PoleTrajectoryNode::getTrajectoryToPole(const std::vector<double> &current_position, const std::vector<double> &pole_position) {
+  bool PoleTrajectoryNode::getTrajectoryToPole(const std::vector<double> &current_position, const std::vector<double> &pole_position,
+                                                const std::string& mode) {
 
     std::vector<double> attitude = {0.0, 0.0, 0.0};
-    std::vector<double> position2 = {current_position[0], current_position[1], pole_position[2] + 2.0};
-    std::vector<double> position3 = {pole_position[0], pole_position[1], pole_position[2] + 2.0};
+    std::vector<double> position2;
+    std::vector<double> position3;
+
+    if (mode == "go_to_pole") {
+      position2 = { current_position[0], current_position[1], pole_position[2] + 2.0 };
+      position3 = { pole_position[0], pole_position[1], pole_position[2] + 2.0 };
+    }
+    else if (mode == "grab_pole") {
+      position2 = { pole_position[0], pole_position[1], pole_position[2] + 2.0};
+      position3 = { pole_position[0], pole_position[1], pole_position[2] };
+    }
+    else {
+      ROS_ERROR_STREAM("Wrong Mode, could not get Trajectory!");
+      return false;
+    }
 
     YAML::Emitter emitter;
 
@@ -99,21 +117,20 @@ namespace geranos_planner {
     emitter << YAML::Value << point_list;
     emitter << YAML::EndMap;
 
-    return writeYamlFile(emitter);
+    return writeYamlFile(emitter, mode);
   }
 
   bool PoleTrajectoryNode::goToPoleSrv(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response) {
+
     Eigen::Vector3d current_position = current_position_W_;
     Eigen::Vector3d pole_position = current_pole_position_W_;
 
-    std::vector<double> current_position_vec(&current_position[0], 
-                                              current_position.data()+current_position.cols()*current_position.rows());
-    std::vector<double> pole_position_vec(&pole_position[0], 
-                                              pole_position.data()+pole_position.cols()*pole_position.rows());
+    std::vector<double> current_position_vec = get_vec(current_position);
+    std::vector<double> pole_position_vec = get_vec(pole_position);
 
-    if (getTrajectoryToPole(current_position_vec, pole_position_vec)) {
+    if (getTrajectoryToPole(current_position_vec, pole_position_vec, "go_to_pole")) {
       omav_local_planner::ExecuteTrajectory srv;
-      srv.request.waypoint_filename = filename_;
+      srv.request.waypoint_filename = filename_go_to_pole_;
       if (go_to_pole_client_.call(srv))
         return true;
       else {
@@ -127,7 +144,36 @@ namespace geranos_planner {
     }
   }
 
-}
+  bool PoleTrajectoryNode::grabPoleSrv(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response) {
+
+    Eigen::Vector3d current_position = current_position_W_;
+    Eigen::Vector3d pole_position = current_pole_position_W_;
+
+    std::vector<double> current_position_vec = get_vec(current_position);
+    std::vector<double> pole_position_vec = get_vec(pole_position);
+
+    if (getTrajectoryToPole(current_position_vec, pole_position_vec, "grab_pole")) {
+      omav_local_planner::ExecuteTrajectory srv;
+      srv.request.waypoint_filename = filename_grab_pole_;
+    if (go_to_pole_client_.call(srv))
+      return true;
+    else {
+      ROS_ERROR_STREAM("Was not able to call execute_trajectory service!");
+      return false;
+    }
+    }
+    else {
+      ROS_ERROR_STREAM("Was not able to get Trajectory to Pole!");
+      return false;
+    }
+  }
+
+  template<typename eigen_vec>
+  std::vector<double> PoleTrajectoryNode::get_vec(eigen_vec& vec) {
+    std::vector<double> result(&vec[0], vec.data()+vec.cols()*vec.rows());
+    return result;
+  }
+} //namespace geranos_planner
 
 template<typename... Ts>
 std::shared_ptr<geranos_planner::PoleTrajectoryNode> makeNode(Ts&&... params) {

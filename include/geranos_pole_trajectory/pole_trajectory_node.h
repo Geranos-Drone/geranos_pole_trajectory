@@ -32,32 +32,38 @@ namespace geranos_planner {
   private:
   	void odometryCallback(const nav_msgs::OdometryConstPtr& odometry_msg);
 
-  	void polePoseCallback(const geometry_msgs::TransformStamped pole_transform_msg);
+  	void polePoseCallback(const geometry_msgs::TransformStamped& pole_transform_msg);
 
-  	bool writeYamlFile(const YAML::Emitter& emitter);
+  	bool writeYamlFile(const YAML::Emitter& emitter, const std::string& mode);
 
-  	bool getTrajectoryToPole(const std::vector<double> &current_position, const std::vector<double> &pole_position);
+  	bool getTrajectoryToPole(const std::vector<double> &current_position, const std::vector<double> &pole_position,
+  														const std::string& mode);
 
   	bool goToPoleSrv(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response);
 
+  	bool grabPoleSrv(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response);
+
+	  template<typename eigen_vec>
+	  std::vector<double> get_vec(eigen_vec& vec);
+
   	ros::NodeHandle nh_;
-	ros::NodeHandle private_nh_;
+		ros::NodeHandle private_nh_;
 
-	ros::Subscriber odometry_sub_;
-	ros::Subscriber pole_transform_sub_;
+		ros::Subscriber odometry_sub_;
+		ros::Subscriber pole_transform_sub_;
 
-	ros::ServiceServer go_to_pole_service_;
-	ros::ServiceServer grab_pole_service_;
-	ros::ServiceClient go_to_pole_client_;
+		ros::ServiceServer go_to_pole_service_;
+		ros::ServiceServer grab_pole_service_;
+		ros::ServiceClient go_to_pole_client_;
 
-	mav_msgs::EigenOdometry current_odometry_;
-	Eigen::Vector3d current_position_W_;
+		mav_msgs::EigenOdometry current_odometry_;
+		Eigen::Vector3d current_position_W_;
 
-	mav_msgs::EigenTrajectoryPoint pole_trajectory_point_;
-	Eigen::Vector3d current_pole_position_W_;
+		mav_msgs::EigenTrajectoryPoint pole_trajectory_point_;
+		Eigen::Vector3d current_pole_position_W_;
 
-	std::string filename_;
-	YAML::Emitter emitter_;
+		std::string filename_go_to_pole_;
+		std::string filename_grab_pole_;
 
   };
 }
