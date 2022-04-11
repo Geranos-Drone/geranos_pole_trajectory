@@ -5,6 +5,7 @@
 
 #include <mav_msgs/conversions.h>
 #include <mav_msgs/default_topics.h>
+#include <mav_msgs/common.h>
 #include <geometry_msgs/TransformStamped.h>
 
 #include <std_srvs/Empty.h>
@@ -36,8 +37,10 @@ namespace geranos_planner {
 
   	bool writeYamlFile(const YAML::Emitter& emitter, const std::string& mode);
 
-  	bool getTrajectoryToPole(const std::vector<double> &current_position, const std::vector<double> &pole_position,
-  														const std::string& mode);
+  	bool getTrajectoryToPole(const std::vector<double> &current_position,  
+  		                                          const std::vector<double>& current_attitude,
+                                                const std::vector<double> &pole_position,
+                                                const std::string& mode);
 
   	bool goToPoleSrv(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response);
 
@@ -58,12 +61,14 @@ namespace geranos_planner {
 
 		mav_msgs::EigenOdometry current_odometry_;
 		Eigen::Vector3d current_position_W_;
+		Eigen::Quaterniond current_orientation_W_B_;
 
 		mav_msgs::EigenTrajectoryPoint pole_trajectory_point_;
 		Eigen::Vector3d current_pole_position_W_;
 
 		std::string filename_go_to_pole_;
 		std::string filename_grab_pole_;
+		std::string path_;
 
   };
 }

@@ -13,6 +13,7 @@ namespace geranos_planner {
 
           filename_go_to_pole_ = "/home/tim/catkin_ws/src/mav_ui/omav_local_planner/resource/go_to_pole.yaml";
           filename_grab_pole_ = "/home/tim/catkin_ws/src/mav_ui/omav_local_planner/resource/grab_pole.yaml";
+          path_ = "/home/tim/catkin_ws/src/mav_ui/omav_local_planner/resource/";
         }
 
   PoleTrajectoryNode::~PoleTrajectoryNode() {}
@@ -21,6 +22,7 @@ namespace geranos_planner {
     ROS_INFO_ONCE("PoleTrajectoryNode received first odometry!");
     mav_msgs::eigenOdometryFromMsg(*odometry_msg, &current_odometry_);
     current_position_W_ = current_odometry_.position_W;
+    current_orientation_W_B_ = current_odometry_.orientation_W_B;
   }
 
   void PoleTrajectoryNode::polePoseCallback(const geometry_msgs::TransformStamped& pole_transform_msg) {
@@ -30,17 +32,20 @@ namespace geranos_planner {
   }
 
   bool PoleTrajectoryNode::writeYamlFile(const YAML::Emitter& emitter, const std::string& mode) {
+    ROS_INFO_STREAM("writeYamlFile, mode = " << mode);
+    std::string filename = path_ + mode + ".yaml";
     try
     {
       std::ofstream fout;
-      if (mode == " go_to_pole")
+      fout.open(filename.c_str());
+/*      if (mode == " go_to_pole")
         fout.open(filename_go_to_pole_.c_str());
       else if (mode == "grab_pole")
-        fout.open(filename_go_to_pole_.c_str());
+        fout.open(filename_grab_pole_.c_str());
       else {
         ROS_ERROR_STREAM("Could not write yaml file, wrong mode!");
         return false;
-      }
+      }*/
       fout << emitter.c_str();
       fout.close();
       return true;
@@ -52,10 +57,12 @@ namespace geranos_planner {
     }
   }
 
-  bool PoleTrajectoryNode::getTrajectoryToPole(const std::vector<double> &current_position, const std::vector<double> &pole_position,
+  bool PoleTrajectoryNode::getTrajectoryToPole(const std::vector<double> &current_position, 
+                                                const std::vector<double>& current_attitude,
+                                                const std::vector<double> &pole_position,
                                                 const std::string& mode) {
 
-    std::vector<double> attitude = {0.0, 0.0, 0.0};
+    std::vector<double> attitude = { 0.0, 0.0, current_attitude[2] };
     std::vector<double> position2;
     std::vector<double> position3;
 
@@ -94,21 +101,21 @@ namespace geranos_planner {
     yaml_point1["pos"] = current_position;
     yaml_point1["att"] = attitude;
     yaml_point1["stop"] = true;
-    yaml_point1["time"] = 8.0;
+    yaml_point1["time"] = 10.0;
 
     YAML::Node yaml_point2 = YAML::Node(YAML::NodeType::Map);
 
     yaml_point2["pos"] = position2;
     yaml_point2["att"] = attitude;
     yaml_point2["stop"] = true;
-    yaml_point2["time"] = 8.0;
+    yaml_point2["time"] = 10.0;
 
     YAML::Node yaml_point3 = YAML::Node(YAML::NodeType::Map);
 
     yaml_point3["pos"] = position3;
     yaml_point3["att"] = attitude;
     yaml_point3["stop"] = true;
-    yaml_point3["time"] = 8.0;
+    yaml_point3["time"] = 10.0;
 
     point_list.push_back(yaml_point1);
     point_list.push_back(yaml_point2);
@@ -124,11 +131,14 @@ namespace geranos_planner {
 
     Eigen::Vector3d current_position = current_position_W_;
     Eigen::Vector3d pole_position = current_pole_position_W_;
+    Eigen::Vector3d current_attitude; 
+    mav_msgs::getEulerAnglesFromQuaternion(current_orientation_W_B_, &current_attitude);
 
     std::vector<double> current_position_vec = get_vec(current_position);
+    std::vector<double> current_attitude_vec = get_vec(current_attitude);
     std::vector<double> pole_position_vec = get_vec(pole_position);
 
-    if (getTrajectoryToPole(current_position_vec, pole_position_vec, "go_to_pole")) {
+    if (getTrajectoryToPole(current_position_vec, current_attitude_vec, pole_position_vec, "go_to_pole")) {
       omav_local_planner::ExecuteTrajectory srv;
       srv.request.waypoint_filename = filename_go_to_pole_;
       if (go_to_pole_client_.call(srv))
@@ -148,11 +158,14 @@ namespace geranos_planner {
 
     Eigen::Vector3d current_position = current_position_W_;
     Eigen::Vector3d pole_position = current_pole_position_W_;
+    Eigen::Vector3d current_attitude; 
+    mav_msgs::getEulerAnglesFromQuaternion(current_orientation_W_B_, &current_attitude);
 
     std::vector<double> current_position_vec = get_vec(current_position);
+    std::vector<double> current_attitude_vec = get_vec(current_attitude);
     std::vector<double> pole_position_vec = get_vec(pole_position);
 
-    if (getTrajectoryToPole(current_position_vec, pole_position_vec, "grab_pole")) {
+    if (getTrajectoryToPole(current_position_vec, current_attitude_vec, pole_position_vec, "grab_pole")) {
       omav_local_planner::ExecuteTrajectory srv;
       srv.request.waypoint_filename = filename_grab_pole_;
     if (go_to_pole_client_.call(srv))
@@ -168,9 +181,9 @@ namespace geranos_planner {
     }
   }
 
-  template<typename eigen_vec>
+  template <typename eigen_vec>
   std::vector<double> PoleTrajectoryNode::get_vec(eigen_vec& vec) {
-    std::vector<double> result(&vec[0], vec.data()+vec.cols()*vec.rows());
+    std::vector<double> result(&vec[0], vec.data()+vec.size());
     return result;
   }
 } //namespace geranos_planner
