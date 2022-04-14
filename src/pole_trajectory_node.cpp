@@ -62,13 +62,13 @@ namespace geranos_planner {
                                                 const std::vector<double> &pole_position,
                                                 const std::string& mode) {
 
-    std::vector<double> attitude = { 0.0, 0.0, current_attitude[2] };
+    std::vector<double> attitude = { 0.0, 0.0, 0.0 /*current_attitude[2]*/ };
     std::vector<double> position2;
     std::vector<double> position3;
 
     if (mode == "go_to_pole") {
-      position2 = { current_position[0], current_position[1], pole_position[2] + 2.0 };
-      position3 = { pole_position[0], pole_position[1], pole_position[2] + 2.0 };
+      position2 = { current_position[0], current_position[1], pole_position[2] + 1.0 };
+      position3 = { pole_position[0], pole_position[1], pole_position[2] + 1.0 };
     }
     else if (mode == "grab_pole") {
       position2 = { pole_position[0], pole_position[1], pole_position[2] + 2.0};
