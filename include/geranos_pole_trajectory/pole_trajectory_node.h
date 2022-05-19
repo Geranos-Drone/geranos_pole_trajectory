@@ -7,6 +7,7 @@
 #include <mav_msgs/default_topics.h>
 #include <mav_msgs/common.h>
 #include <geometry_msgs/TransformStamped.h>
+#include <std_msgs/String.h>
 
 #include <std_srvs/Empty.h>
 #include <omav_local_planner/ExecuteTrajectory.h>
@@ -19,7 +20,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-
+#include <sstream>
 
 
 namespace geranos_planner {
