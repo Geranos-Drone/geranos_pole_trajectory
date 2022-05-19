@@ -3,17 +3,25 @@
 
 #include <ros/ros.h>
 
+//msgs
 #include <mav_msgs/conversions.h>
 #include <mav_msgs/default_topics.h>
 #include <mav_msgs/common.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <std_msgs/String.h>
 
+//tf
+#include <tf/transform_listener.h>
+#include <tf_conversions/tf_eigen.h>
+
+//srvs
 #include <std_srvs/Empty.h>
 #include <omav_local_planner/ExecuteTrajectory.h>
 
+//eigen
 #include <Eigen/Eigen>
 
+//eigen
 #include <yaml-cpp/yaml.h>
 #include <yaml-cpp/emitter.h>
 
@@ -33,6 +41,8 @@ namespace geranos_planner {
 
   private:
   	void odometryCallback(const nav_msgs::OdometryConstPtr& odometry_msg);
+
+  	void transformOdometry(mav_msgs::EigenOdometry& odometry);
 
   	void whitePolePoseCallback(const geometry_msgs::TransformStamped& pole_transform_msg);
   	void greyPolePoseCallback(const geometry_msgs::TransformStamped& pole_transform_msg);
@@ -66,6 +76,10 @@ namespace geranos_planner {
 		ros::ServiceServer go_to_pole_service_;
 		ros::ServiceServer grab_pole_service_;
 		ros::ServiceClient go_to_pole_client_;
+
+	  tf::TransformListener tf_listener_;
+	  tf::StampedTransform tf_imu_base_;
+	  Eigen::Affine3d T_B_imu_;
 
 		mav_msgs::EigenOdometry current_odometry_;
 		Eigen::Vector3d current_position_W_;

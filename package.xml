@@ -22,6 +22,8 @@
   <depend>mav_msgs</depend>
   <depend>std_msgs</depend>
   <depend>std_srvs</depend>
+  <depend>tf</depend>
+  <depend>tf_conversions</depend>
   <depend>yaml_cpp_catkin</depend>
   <depend>omav_local_planner</depend>
 

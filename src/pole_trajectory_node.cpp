@@ -21,6 +21,20 @@ namespace geranos_planner {
           go_to_pole_service_ = nh_.advertiseService("go_to_pole_service", &PoleTrajectoryNode::goToPoleSrv, this);
           go_to_pole_client_ = nh_.serviceClient<omav_local_planner::ExecuteTrajectory>("execute_trajectory");
           grab_pole_service_ = nh_.advertiseService("grab_pole_service", &PoleTrajectoryNode::grabPoleSrv, this);
+
+          try
+            {
+              tf_listener_.waitForTransform("base", "imu", ros::Time(0),
+                                            ros::Duration(5.0));
+              tf_listener_.lookupTransform("base", "imu",  
+                                          ros::Time(0), tf_imu_base_);
+              tf::transformTFToEigen(tf_imu_base_, T_B_imu_);
+              ROS_INFO_STREAM("[full_pose_waypoint] Found base to imu transform!");
+            }
+          catch (tf::TransformException ex)
+            {
+              ROS_ERROR("%s",ex.what());
+            }
         }
 
   PoleTrajectoryNode::~PoleTrajectoryNode() {}
@@ -28,8 +42,18 @@ namespace geranos_planner {
   void PoleTrajectoryNode::odometryCallback(const nav_msgs::OdometryConstPtr& odometry_msg) {
     ROS_INFO_ONCE("PoleTrajectoryNode received first odometry!");
     mav_msgs::eigenOdometryFromMsg(*odometry_msg, &current_odometry_);
+    transformOdometry(current_odometry_);
     current_position_W_ = current_odometry_.position_W;
     current_yaw_W_B_ = mav_msgs::yawFromQuaternion(current_odometry_.orientation_W_B);
+  }
+
+  //Transform Odometry from IMU to Base frame
+  void PoleTrajectoryNode::transformOdometry(mav_msgs::EigenOdometry& odometry) {
+    Eigen::Matrix3d R_B_imu = T_B_imu_.rotation();  // rotation from imu to body frame
+    Eigen::Vector3d r_B_imu_imu = T_B_imu_.translation();  // body to imu offset expressed in base frame
+    Eigen::Matrix3d R_W_B = odometry.orientation_W_B.toRotationMatrix();
+    // add translational offset between imu and body frame
+    odometry.position_W -= R_W_B * R_B_imu * r_B_imu_imu;
   }
 
   void PoleTrajectoryNode::whitePolePoseCallback(const geometry_msgs::TransformStamped& pole_transform_msg) {
@@ -152,7 +176,7 @@ namespace geranos_planner {
     publishMode();
 
     Eigen::Vector3d current_position = current_position_W_;
-    double current_yaw = current_yaw_W_B_;
+    // double current_yaw = current_yaw_W_B_;
     Eigen::Vector3d pole_position;
     Eigen::Vector3d pole_height;
     pole_height << 0.0, 0.0, 0.5;
@@ -179,7 +203,7 @@ namespace geranos_planner {
     // mav_msgs::getEulerAnglesFromQuaternion(current_orientation_W_B_, &current_attitude);
 
     std::vector<double> current_position_vec = get_vec(current_position);
-    std::vector<double> current_attitude_vec = { 0.0, 0.0, current_yaw };
+    std::vector<double> current_attitude_vec = { 0.0, 0.0, 0.0/*current_yaw*/ };
     std::vector<double> pole_position_vec = get_vec(pole_position);
 
     if (getTrajectoryToPole(current_position_vec, current_attitude_vec, pole_position_vec, "go_to_pole")) {
@@ -263,7 +287,6 @@ namespace geranos_planner {
     msg->data = mode_;
     mode_pub_.publish(msg);
   }
-
 
   template <typename eigen_vec>
   std::vector<double> PoleTrajectoryNode::get_vec(eigen_vec& vec) {
