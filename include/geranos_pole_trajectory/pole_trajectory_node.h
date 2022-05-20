@@ -56,8 +56,8 @@ namespace geranos_planner {
                                                 const std::string& mode);
 
   	bool goToPoleSrv(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response);
-
   	bool grabPoleSrv(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response);
+  	bool resetSrv(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response);
 
   	void publishMode();
 
@@ -75,6 +75,7 @@ namespace geranos_planner {
 
 		ros::ServiceServer go_to_pole_service_;
 		ros::ServiceServer grab_pole_service_;
+		ros::ServiceServer reset_trajectory_service_;
 		ros::ServiceClient go_to_pole_client_;
 
 	  tf::TransformListener tf_listener_;

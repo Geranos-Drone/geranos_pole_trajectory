@@ -21,6 +21,7 @@ namespace geranos_planner {
           go_to_pole_service_ = nh_.advertiseService("go_to_pole_service", &PoleTrajectoryNode::goToPoleSrv, this);
           go_to_pole_client_ = nh_.serviceClient<omav_local_planner::ExecuteTrajectory>("execute_trajectory");
           grab_pole_service_ = nh_.advertiseService("grab_pole_service", &PoleTrajectoryNode::grabPoleSrv, this);
+          reset_trajectory_service_ = nh_.advertiseService("reset_trajectory_service", &PoleTrajectoryNode::resetSrv, this);
 
           try
             {
@@ -111,11 +112,11 @@ namespace geranos_planner {
     std::vector<double> position3;
 
     if (mode == "go_to_pole") {
-      position2 = { current_position[0], current_position[1], pole_position[2] + 1.8 };
-      position3 = { pole_position[0], pole_position[1], pole_position[2] + 1.8 };
+      position2 = { current_position[0], current_position[1], pole_position[2] + 2.0 };
+      position3 = { pole_position[0], pole_position[1], pole_position[2] + 2.0 };
     }
     else if (mode == "grab_pole") {
-      position2 = { pole_position[0], pole_position[1], pole_position[2] + 1.3};
+      position2 = { pole_position[0], pole_position[1], pole_position[2] + 1.5};
       position3 = { pole_position[0], pole_position[1], pole_position[2] + 0.5 };
     }
     else {
@@ -145,7 +146,7 @@ namespace geranos_planner {
     yaml_point1["pos"] = current_position;
     yaml_point1["att"] = current_attitude;
     yaml_point1["stop"] = true;
-    yaml_point1["time"] = 10.0;
+    yaml_point1["time"] = 5.0;
 
     YAML::Node yaml_point2 = YAML::Node(YAML::NodeType::Map);
 
@@ -159,7 +160,7 @@ namespace geranos_planner {
     yaml_point3["pos"] = position3;
     yaml_point3["att"] = current_attitude;
     yaml_point3["stop"] = true;
-    yaml_point3["time"] = 10.0;
+    yaml_point3["time"] = 20.0;
 
     point_list.push_back(yaml_point1);
     point_list.push_back(yaml_point2);
@@ -281,6 +282,15 @@ namespace geranos_planner {
       return false;
     }
   }
+
+  bool PoleTrajectoryNode::resetSrv(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response) {
+    mode_ = "get_white";
+    grabbed_white_ = false;
+    grabbed_grey_ = false;
+    publishMode();
+    return true;
+  }
+
 
   void PoleTrajectoryNode::publishMode() {
     std_msgs::StringPtr msg(new std_msgs::String);
