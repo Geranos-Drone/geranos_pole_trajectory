@@ -117,7 +117,7 @@ namespace geranos_planner {
     }
     else if (mode == "grab_pole") {
       position2 = { pole_position[0], pole_position[1], pole_position[2] + 1.5};
-      position3 = { pole_position[0], pole_position[1], pole_position[2] + 0.5 };
+      position3 = { pole_position[0], pole_position[1], pole_position[2] + 0.7 };
     }
     else {
       ROS_ERROR_STREAM("Wrong Trajectory-Mode, could not get Trajectory!");
@@ -189,7 +189,7 @@ namespace geranos_planner {
       pole_position = current_pole_grey_position_W_;
     }
     else if (mode_ == "go_to_mount" && !grabbed_grey_) {
-      pole_position = current_mount_position_W_;
+      pole_position = current_mount_position_W_ - pole_height;
     }
     else if (mode_ == "go_to_mount" && grabbed_grey_) {
       pole_position = current_mount_position_W_ + pole_height;
@@ -248,7 +248,7 @@ namespace geranos_planner {
     // mav_msgs::getEulerAnglesFromQuaternion(current_orientation_W_B_, &current_attitude);
 
     std::vector<double> current_position_vec = get_vec(current_position);
-    std::vector<double> current_attitude_vec = { 0.0, 0.0, current_yaw };
+    std::vector<double> current_attitude_vec = { -0.02, 0.0, current_yaw };
     std::vector<double> pole_position_vec = get_vec(pole_position);
 
     if (getTrajectoryToPole(current_position_vec, current_attitude_vec, pole_position_vec, "grab_pole")) {
