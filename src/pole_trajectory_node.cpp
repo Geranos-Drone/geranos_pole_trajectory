@@ -112,11 +112,11 @@ namespace geranos_planner {
     std::vector<double> position3;
 
     if (mode == "go_to_pole") {
-      position2 = { current_position[0], current_position[1], pole_position[2] + 1.7 };
-      position3 = { pole_position[0], pole_position[1], pole_position[2] + 1.7 };
+      position2 = { current_position[0], current_position[1], pole_position[2] + 1.6 };
+      position3 = { pole_position[0], pole_position[1], pole_position[2] + 1.6 };
     }
     else if (mode == "grab_pole") {
-      position2 = { pole_position[0], pole_position[1], pole_position[2] + 1.5};
+      position2 = { pole_position[0], pole_position[1], pole_position[2] + 0.7};
       position3 = { pole_position[0], pole_position[1], pole_position[2] + 0.7 };
     }
     else {
@@ -228,6 +228,8 @@ namespace geranos_planner {
     Eigen::Vector3d current_position = current_position_W_;
     double current_yaw = current_yaw_W_B_;
     Eigen::Vector3d pole_position;
+    Eigen::Vector3d pole_height;
+    pole_height << 0.0, 0.0, 1.0;
 
     if (mode_ == "get_white") {
       pole_position = current_pole_white_position_W_;
@@ -235,8 +237,11 @@ namespace geranos_planner {
     else if (mode_ == "get_grey") {
       pole_position = current_pole_grey_position_W_;
     }
-    else if (mode_ == "go_to_mount") {
-      pole_position = current_mount_position_W_;
+    else if (mode_ == "go_to_mount" && !grabbed_grey_) {
+      pole_position = current_mount_position_W_ ;
+    }
+    else if (mode_ == "go_to_mount" && grabbed_grey_) {
+      pole_position = current_mount_position_W_ + pole_height;
     }
     else {
       ROS_ERROR_STREAM("[pole_trajectory_node] WRONG MODE!");
