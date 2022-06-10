@@ -36,6 +36,7 @@ namespace geranos_planner {
             {
               ROS_ERROR("%s",ex.what());
             }
+          publishMode();
         }
 
   PoleTrajectoryNode::~PoleTrajectoryNode() {}
@@ -106,18 +107,16 @@ namespace geranos_planner {
                                                 const std::vector<double>& current_attitude,
                                                 const std::vector<double> &pole_position,
                                                 const std::string& mode) {
-
-    // std::vector<double> attitude = { 0.0, 0.0, 0.0 /*current_attitude[2]*/ };
     std::vector<double> position2;
     std::vector<double> position3;
 
     if (mode == "go_to_pole") {
-      position2 = { current_position[0], current_position[1], pole_position[2] + 1.6 };
-      position3 = { pole_position[0], pole_position[1], pole_position[2] + 1.6 };
+      position2 = { current_position[0], current_position[1], pole_position[2] + 1.8 };
+      position3 = { pole_position[0], pole_position[1], pole_position[2] + 1.8 };
     }
     else if (mode == "grab_pole") {
-      position2 = { pole_position[0], pole_position[1], pole_position[2] + 0.7};
-      position3 = { pole_position[0], pole_position[1], pole_position[2] + 0.7 };
+      position2 = { pole_position[0], pole_position[1], pole_position[2] + 0.65};
+      position3 = { pole_position[0], pole_position[1], pole_position[2] + 0.65};
     }
     else {
       ROS_ERROR_STREAM("Wrong Trajectory-Mode, could not get Trajectory!");
@@ -150,7 +149,7 @@ namespace geranos_planner {
 
     YAML::Node yaml_point2 = YAML::Node(YAML::NodeType::Map);
 
-    yaml_point2["pos"] = position2;
+    yaml_point2["pos"] = position3;
     yaml_point2["att"] = current_attitude;
     yaml_point2["stop"] = true;
     yaml_point2["time"] = 10.0;
@@ -164,7 +163,7 @@ namespace geranos_planner {
 
     point_list.push_back(yaml_point1);
     point_list.push_back(yaml_point2);
-    point_list.push_back(yaml_point3);
+    // point_list.push_back(yaml_point3);
 
     emitter << YAML::Value << point_list;
     emitter << YAML::EndMap;
@@ -180,23 +179,43 @@ namespace geranos_planner {
     // double current_yaw = current_yaw_W_B_;
     Eigen::Vector3d pole_position;
     Eigen::Vector3d pole_height;
-    pole_height << 0.0, 0.0, 0.5;
+    pole_height << 0.0, 0.0, 0.3;
 
-    if (mode_ == "get_white") {
-      pole_position = current_pole_white_position_W_;
+    // SWITCH
+    switch(state_.currState()) {
+      case State::GET_WHITE:
+        pole_position = current_pole_white_position_W_;
+        break;
+      case State::PLACE_WHITE:
+        pole_position = current_mount_position_W_ - pole_height;
+        break;
+      case State::GET_GREY:
+        pole_position = current_pole_grey_position_W_;
+        break;
+      case State::PLACE_GREY:
+        pole_position = current_mount_position_W_ + pole_height;
+        break;
+      case State::DONE:
+        return true;
+      default:
+        ROS_ERROR_STREAM("[pole_trajectory_node] WRONG MODE!");
     }
-    else if (mode_ == "get_grey") {
-      pole_position = current_pole_grey_position_W_;
-    }
-    else if (mode_ == "go_to_mount" && !grabbed_grey_) {
-      pole_position = current_mount_position_W_ - pole_height;
-    }
-    else if (mode_ == "go_to_mount" && grabbed_grey_) {
-      pole_position = current_mount_position_W_ + pole_height;
-    }
-    else {
-      ROS_ERROR_STREAM("[pole_trajectory_node] WRONG MODE!");
-    }
+
+    // if (mode_ == "get_white") {
+    //   pole_position = current_pole_white_position_W_;
+    // }
+    // else if (mode_ == "get_grey") {
+    //   pole_position = current_pole_grey_position_W_;
+    // }
+    // else if (mode_ == "go_to_mount" && !grabbed_grey_) {
+    //   pole_position = current_mount_position_W_ - pole_height;
+    // }
+    // else if (mode_ == "go_to_mount" && grabbed_grey_) {
+    //   pole_position = current_mount_position_W_ + pole_height;
+    // }
+    // else {
+    //   ROS_ERROR_STREAM("[pole_trajectory_node] WRONG MODE!");
+    // }
 
     ROS_INFO_STREAM("Approaching Pole in mode " << mode_);
 
@@ -231,21 +250,40 @@ namespace geranos_planner {
     Eigen::Vector3d pole_height;
     pole_height << 0.0, 0.0, 1.0;
 
-    if (mode_ == "get_white") {
-      pole_position = current_pole_white_position_W_;
+    switch(state_.currState()) {
+      case State::GET_WHITE:
+        pole_position = current_pole_white_position_W_;
+        break;
+      case State::PLACE_WHITE:
+        pole_position = current_mount_position_W_;
+        break;
+      case State::GET_GREY:
+        pole_position = current_pole_grey_position_W_;
+        break;
+      case State::PLACE_GREY:
+        pole_position = current_mount_position_W_ + pole_height;
+        break;
+      case State::DONE:
+        return true;
+      default:
+        ROS_ERROR_STREAM("[pole_trajectory_node] WRONG MODE!");
     }
-    else if (mode_ == "get_grey") {
-      pole_position = current_pole_grey_position_W_;
-    }
-    else if (mode_ == "go_to_mount" && !grabbed_grey_) {
-      pole_position = current_mount_position_W_ ;
-    }
-    else if (mode_ == "go_to_mount" && grabbed_grey_) {
-      pole_position = current_mount_position_W_ + pole_height;
-    }
-    else {
-      ROS_ERROR_STREAM("[pole_trajectory_node] WRONG MODE!");
-    }
+
+    // if (mode_ == "get_white") {
+    //   pole_position = current_pole_white_position_W_;
+    // }
+    // else if (mode_ == "get_grey") {
+    //   pole_position = current_pole_grey_position_W_;
+    // }
+    // else if (mode_ == "go_to_mount" && !grabbed_grey_) {
+    //   pole_position = current_mount_position_W_ ;
+    // }
+    // else if (mode_ == "go_to_mount" && grabbed_grey_) {
+    //   pole_position = current_mount_position_W_ + pole_height;
+    // }
+    // else {
+    //   ROS_ERROR_STREAM("[pole_trajectory_node] WRONG MODE!");
+    // }
 
     ROS_INFO_STREAM("Grabbing Pole in mode " << mode_);
 
@@ -260,20 +298,21 @@ namespace geranos_planner {
       omav_local_planner::ExecuteTrajectory srv;
       srv.request.waypoint_filename = filename_grab_pole_;
       if (go_to_pole_client_.call(srv)) {
-        if (mode_ == "get_white") {
-          mode_ = "go_to_mount";
-          grabbed_white_ = true;
-        }
-        else if (mode_ == "get_grey") {
-          mode_ = "go_to_mount";
-          grabbed_grey_ = true;
-        }
-        else if (mode_ == "go_to_mount" && grabbed_white_) {
-          mode_ = "get_grey";
-        }
-        else {
-          ROS_ERROR_STREAM("[pole_trajectory_node] WRONG MODE!");
-        }
+        state_.toggle();
+        // if (mode_ == "get_white") {
+        //   mode_ = "go_to_mount";
+        //   grabbed_white_ = true;
+        // }
+        // else if (mode_ == "get_grey") {
+        //   mode_ = "go_to_mount";
+        //   grabbed_grey_ = true;
+        // }
+        // else if (mode_ == "go_to_mount" && grabbed_white_) {
+        //   mode_ = "get_grey";
+        // }
+        // else {
+        //   ROS_ERROR_STREAM("[pole_trajectory_node] WRONG MODE!");
+        // }
         publishMode();
         return true;
       }
@@ -289,9 +328,7 @@ namespace geranos_planner {
   }
 
   bool PoleTrajectoryNode::resetSrv(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response) {
-    mode_ = "get_white";
-    grabbed_white_ = false;
-    grabbed_grey_ = false;
+    state_.reset();
     publishMode();
     return true;
   }
@@ -299,7 +336,7 @@ namespace geranos_planner {
 
   void PoleTrajectoryNode::publishMode() {
     std_msgs::StringPtr msg(new std_msgs::String);
-    msg->data = mode_;
+    msg->data = state_.getCurrMode();
     mode_pub_.publish(msg);
   }
 

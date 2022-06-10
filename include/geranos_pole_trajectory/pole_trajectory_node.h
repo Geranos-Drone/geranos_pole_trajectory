@@ -30,6 +30,8 @@
 #include <string>
 #include <sstream>
 
+#include <geranos_pole_trajectory/state_machine.h>
+
 
 namespace geranos_planner {
   
@@ -100,6 +102,8 @@ namespace geranos_planner {
 		std::string mode_;
 		bool grabbed_white_;
 		bool grabbed_grey_;
+
+		TrajectoryState state_;
 
   };
 }

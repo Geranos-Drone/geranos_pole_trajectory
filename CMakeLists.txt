@@ -16,6 +16,7 @@ cs_add_library(geranos_pole_trajectory_lib
 
 cs_add_executable(pole_trajectory_node
   src/pole_trajectory_node.cpp
+  src/state_machine.cpp
 )
 
 include_directories(SYSTEM "${LIB_DIR}/Include")
