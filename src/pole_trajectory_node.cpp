@@ -21,7 +21,9 @@ namespace geranos_planner {
           go_to_pole_service_ = nh_.advertiseService("go_to_pole_service", &PoleTrajectoryNode::goToPoleSrv, this);
           go_to_pole_client_ = nh_.serviceClient<omav_local_planner::ExecuteTrajectory>("execute_trajectory");
           grab_pole_service_ = nh_.advertiseService("grab_pole_service", &PoleTrajectoryNode::grabPoleSrv, this);
+          lift_pole_service_ = nh_.advertiseService("lift_pole_service", &PoleTrajectoryNode::liftPoleSrv, this);
           reset_trajectory_service_ = nh_.advertiseService("reset_trajectory_service", &PoleTrajectoryNode::resetSrv, this);
+          switch_param_client_ = nh_.serviceClient<std_srvs::Empty>("impedance_module/switch_control_params");
 
           try
             {
@@ -84,14 +86,6 @@ namespace geranos_planner {
     {
       std::ofstream fout;
       fout.open(filename.c_str());
-/*      if (mode == " go_to_pole")
-        fout.open(filename_go_to_pole_.c_str());
-      else if (mode == "grab_pole")
-        fout.open(filename_grab_pole_.c_str());
-      else {
-        ROS_ERROR_STREAM("Could not write yaml file, wrong mode!");
-        return false;
-      }*/
       fout << emitter.c_str();
       fout.close();
       return true;
@@ -109,14 +103,22 @@ namespace geranos_planner {
                                                 const std::string& mode) {
     std::vector<double> position2;
     std::vector<double> position3;
+    double time;
 
     if (mode == "go_to_pole") {
       position2 = { current_position[0], current_position[1], pole_position[2] + 1.8 };
       position3 = { pole_position[0], pole_position[1], pole_position[2] + 1.8 };
+      time = 20.0;
     }
     else if (mode == "grab_pole") {
       position2 = { pole_position[0], pole_position[1], pole_position[2] + 0.65};
       position3 = { pole_position[0], pole_position[1], pole_position[2] + 0.65};
+      time = 10.0;
+    }
+    else if (mode == "lift_pole") {
+      position2 = { current_position[0], current_position[1], current_position[2] + 1.0 };
+      position3 = { current_position[0], current_position[1], current_position[2] + 1.0 };
+      time = 5.0;
     }
     else {
       ROS_ERROR_STREAM("Wrong Trajectory-Mode, could not get Trajectory!");
@@ -145,21 +147,21 @@ namespace geranos_planner {
     yaml_point1["pos"] = current_position;
     yaml_point1["att"] = current_attitude;
     yaml_point1["stop"] = true;
-    yaml_point1["time"] = 5.0;
+    yaml_point1["time"] = 2.0;
 
     YAML::Node yaml_point2 = YAML::Node(YAML::NodeType::Map);
 
     yaml_point2["pos"] = position3;
     yaml_point2["att"] = current_attitude;
     yaml_point2["stop"] = true;
-    yaml_point2["time"] = 10.0;
+    yaml_point2["time"] = time;
 
-    YAML::Node yaml_point3 = YAML::Node(YAML::NodeType::Map);
+    // YAML::Node yaml_point3 = YAML::Node(YAML::NodeType::Map);
 
-    yaml_point3["pos"] = position3;
-    yaml_point3["att"] = current_attitude;
-    yaml_point3["stop"] = true;
-    yaml_point3["time"] = 20.0;
+    // yaml_point3["pos"] = position3;
+    // yaml_point3["att"] = current_attitude;
+    // yaml_point3["stop"] = true;
+    // yaml_point3["time"] = 20.0;
 
     point_list.push_back(yaml_point1);
     point_list.push_back(yaml_point2);
@@ -175,13 +177,14 @@ namespace geranos_planner {
 
     publishMode();
 
+    std::string mode = "go_to_pole";
+
     Eigen::Vector3d current_position = current_position_W_;
-    // double current_yaw = current_yaw_W_B_;
+    double current_yaw = current_yaw_W_B_;
     Eigen::Vector3d pole_position;
     Eigen::Vector3d pole_height;
     pole_height << 0.0, 0.0, 0.3;
 
-    // SWITCH
     switch(state_.currState()) {
       case State::GET_WHITE:
         pole_position = current_pole_white_position_W_;
@@ -198,37 +201,18 @@ namespace geranos_planner {
       case State::DONE:
         return true;
       default:
-        ROS_ERROR_STREAM("[pole_trajectory_node] WRONG MODE!");
+        ROS_ERROR_STREAM("[pole_trajectory_node] WRONG STATE MACHINE MODE!");
     }
 
-    // if (mode_ == "get_white") {
-    //   pole_position = current_pole_white_position_W_;
-    // }
-    // else if (mode_ == "get_grey") {
-    //   pole_position = current_pole_grey_position_W_;
-    // }
-    // else if (mode_ == "go_to_mount" && !grabbed_grey_) {
-    //   pole_position = current_mount_position_W_ - pole_height;
-    // }
-    // else if (mode_ == "go_to_mount" && grabbed_grey_) {
-    //   pole_position = current_mount_position_W_ + pole_height;
-    // }
-    // else {
-    //   ROS_ERROR_STREAM("[pole_trajectory_node] WRONG MODE!");
-    // }
-
-    ROS_INFO_STREAM("Approaching Pole in mode " << mode_);
-
-    // Eigen::Vector3d current_attitude; 
-    // mav_msgs::getEulerAnglesFromQuaternion(current_orientation_W_B_, &current_attitude);
+    ROS_INFO_STREAM("Approaching Pole in State " << state_.getCurrMode());
 
     std::vector<double> current_position_vec = get_vec(current_position);
-    std::vector<double> current_attitude_vec = { 0.0, 0.0, 0.0/*current_yaw*/ };
+    std::vector<double> current_attitude_vec = { 0.0, 0.0, current_yaw };
     std::vector<double> pole_position_vec = get_vec(pole_position);
 
-    if (getTrajectoryToPole(current_position_vec, current_attitude_vec, pole_position_vec, "go_to_pole")) {
+    if (getTrajectoryToPole(current_position_vec, current_attitude_vec, pole_position_vec, mode)) {
       omav_local_planner::ExecuteTrajectory srv;
-      srv.request.waypoint_filename = filename_go_to_pole_;
+      srv.request.waypoint_filename = path_ + mode + ".yaml";
       if (go_to_pole_client_.call(srv))
         return true;
       else {
@@ -243,6 +227,8 @@ namespace geranos_planner {
   }
 
   bool PoleTrajectoryNode::grabPoleSrv(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response) {
+
+    std::string mode = "grab_pole";
 
     Eigen::Vector3d current_position = current_position_W_;
     double current_yaw = current_yaw_W_B_;
@@ -285,7 +271,7 @@ namespace geranos_planner {
     //   ROS_ERROR_STREAM("[pole_trajectory_node] WRONG MODE!");
     // }
 
-    ROS_INFO_STREAM("Grabbing Pole in mode " << mode_);
+    ROS_INFO_STREAM("Grabbing Pole in State " << state_.getCurrMode());
 
     // Eigen::Vector3d current_attitude; 
     // mav_msgs::getEulerAnglesFromQuaternion(current_orientation_W_B_, &current_attitude);
@@ -294,32 +280,79 @@ namespace geranos_planner {
     std::vector<double> current_attitude_vec = { 0.0, 0.0, current_yaw };
     std::vector<double> pole_position_vec = get_vec(pole_position);
 
-    if (getTrajectoryToPole(current_position_vec, current_attitude_vec, pole_position_vec, "grab_pole")) {
+    if (getTrajectoryToPole(current_position_vec, current_attitude_vec, pole_position_vec, mode)) {
       omav_local_planner::ExecuteTrajectory srv;
-      srv.request.waypoint_filename = filename_grab_pole_;
-      if (go_to_pole_client_.call(srv)) {
-        state_.toggle();
-        // if (mode_ == "get_white") {
-        //   mode_ = "go_to_mount";
-        //   grabbed_white_ = true;
-        // }
-        // else if (mode_ == "get_grey") {
-        //   mode_ = "go_to_mount";
-        //   grabbed_grey_ = true;
-        // }
-        // else if (mode_ == "go_to_mount" && grabbed_white_) {
-        //   mode_ = "get_grey";
-        // }
-        // else {
-        //   ROS_ERROR_STREAM("[pole_trajectory_node] WRONG MODE!");
-        // }
-        publishMode();
+      srv.request.waypoint_filename = path_ + mode + ".yaml";
+      if (go_to_pole_client_.call(srv)) 
+      {
         return true;
       }
-      else {
+      else 
+      {
         ROS_ERROR_STREAM("Was not able to call execute_trajectory service!");
         return false;
       }
+    } 
+    else {
+      ROS_ERROR_STREAM("Was not able to get Trajectory to Pole!");
+      return false;
+    }
+  }
+
+  bool PoleTrajectoryNode::liftPoleSrv(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response) {
+    std::string mode = "lift_pole";
+
+    Eigen::Vector3d current_position = current_position_W_;
+    double current_yaw = current_yaw_W_B_;
+
+    ROS_INFO_STREAM("Lifting Pole in State " << state_.getCurrMode());
+
+    // Eigen::Vector3d current_attitude; 
+    // mav_msgs::getEulerAnglesFromQuaternion(current_orientation_W_B_, &current_attitude);
+
+    std::vector<double> current_position_vec = get_vec(current_position);
+    std::vector<double> current_attitude_vec = { 0.0, 0.0, current_yaw };
+    std::vector<double> pole_position_vec = {};
+
+    if (getTrajectoryToPole(current_position_vec, current_attitude_vec, pole_position_vec, mode)) 
+    {
+      std_srvs::Empty switch_srv;
+      if (switch_param_client_.call(switch_srv)) 
+      {
+        omav_local_planner::ExecuteTrajectory srv;
+        srv.request.waypoint_filename = path_ + mode + ".yaml";
+        if (go_to_pole_client_.call(srv)) 
+          {
+          state_.toggle();
+          // if (mode_ == "get_white") {
+          //   mode_ = "go_to_mount";
+          //   grabbed_white_ = true;
+          // }
+          // else if (mode_ == "get_grey") {
+          //   mode_ = "go_to_mount";
+          //   grabbed_grey_ = true;
+          // }
+          // else if (mode_ == "go_to_mount" && grabbed_white_) {
+          //   mode_ = "get_grey";
+          // }
+          // else {
+          //   ROS_ERROR_STREAM("[pole_trajectory_node] WRONG MODE!");
+          // }
+          publishMode();
+          return true;
+        }
+        else 
+        {
+          ROS_ERROR_STREAM("Was not able to call execute_trajectory service!");
+          return false;
+        }
+      }
+      else 
+      {
+        ROS_ERROR_STREAM("Was not able to call switch param service!");
+        return false;
+      }
+
     } 
     else {
       ROS_ERROR_STREAM("Was not able to get Trajectory to Pole!");
