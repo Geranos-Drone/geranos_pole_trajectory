@@ -118,7 +118,7 @@ namespace geranos_planner {
     else if (mode == "lift_pole") {
       position2 = { current_position[0], current_position[1], current_position[2] + 1.0 };
       position3 = { current_position[0], current_position[1], current_position[2] + 1.0 };
-      time = 5.0;
+      time = 8.0;
     }
     else {
       ROS_ERROR_STREAM("Wrong Trajectory-Mode, could not get Trajectory!");
@@ -180,7 +180,7 @@ namespace geranos_planner {
     std::string mode = "go_to_pole";
 
     Eigen::Vector3d current_position = current_position_W_;
-    double current_yaw = current_yaw_W_B_;
+    // double current_yaw = current_yaw_W_B_;
     Eigen::Vector3d pole_position;
     Eigen::Vector3d pole_height;
     pole_height << 0.0, 0.0, 0.3;
@@ -207,7 +207,7 @@ namespace geranos_planner {
     ROS_INFO_STREAM("Approaching Pole in State " << state_.getCurrMode());
 
     std::vector<double> current_position_vec = get_vec(current_position);
-    std::vector<double> current_attitude_vec = { 0.0, 0.0, current_yaw };
+    std::vector<double> current_attitude_vec = { 0.0, 0.0, 0.0 /*current_yaw*/ };
     std::vector<double> pole_position_vec = get_vec(pole_position);
 
     if (getTrajectoryToPole(current_position_vec, current_attitude_vec, pole_position_vec, mode)) {
@@ -231,7 +231,7 @@ namespace geranos_planner {
     std::string mode = "grab_pole";
 
     Eigen::Vector3d current_position = current_position_W_;
-    double current_yaw = current_yaw_W_B_;
+    // double current_yaw = current_yaw_W_B_;
     Eigen::Vector3d pole_position;
     Eigen::Vector3d pole_height;
     pole_height << 0.0, 0.0, 1.0;
@@ -277,7 +277,7 @@ namespace geranos_planner {
     // mav_msgs::getEulerAnglesFromQuaternion(current_orientation_W_B_, &current_attitude);
 
     std::vector<double> current_position_vec = get_vec(current_position);
-    std::vector<double> current_attitude_vec = { 0.0, 0.0, current_yaw };
+    std::vector<double> current_attitude_vec = { 0.0, 0.0, 0.0 /*current_yaw*/ };
     std::vector<double> pole_position_vec = get_vec(pole_position);
 
     if (getTrajectoryToPole(current_position_vec, current_attitude_vec, pole_position_vec, mode)) {
@@ -303,7 +303,7 @@ namespace geranos_planner {
     std::string mode = "lift_pole";
 
     Eigen::Vector3d current_position = current_position_W_;
-    double current_yaw = current_yaw_W_B_;
+    // double current_yaw = current_yaw_W_B_;
 
     ROS_INFO_STREAM("Lifting Pole in State " << state_.getCurrMode());
 
@@ -311,7 +311,7 @@ namespace geranos_planner {
     // mav_msgs::getEulerAnglesFromQuaternion(current_orientation_W_B_, &current_attitude);
 
     std::vector<double> current_position_vec = get_vec(current_position);
-    std::vector<double> current_attitude_vec = { 0.0, 0.0, current_yaw };
+    std::vector<double> current_attitude_vec = { 0.0, 0.0, 0.0 /*current_yaw*/ };
     std::vector<double> pole_position_vec = {};
 
     if (getTrajectoryToPole(current_position_vec, current_attitude_vec, pole_position_vec, mode)) 
