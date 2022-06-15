@@ -106,18 +106,18 @@ namespace geranos_planner {
     double time;
 
     if (mode == "go_to_pole") {
-      position2 = { current_position[0], current_position[1], pole_position[2] + 1.8 };
-      position3 = { pole_position[0], pole_position[1], pole_position[2] + 1.8 };
+      position2 = { current_position[0], current_position[1]+0.03, pole_position[2] + 1.8 };
+      position3 = { pole_position[0], pole_position[1]+0.03, pole_position[2] + 1.8 };
       time = 20.0;
     }
     else if (mode == "grab_pole") {
-      position2 = { pole_position[0], pole_position[1], pole_position[2] + 0.65};
-      position3 = { pole_position[0], pole_position[1], pole_position[2] + 0.65};
+      position2 = { pole_position[0], pole_position[1]+0.03, pole_position[2] + 0.65};
+      position3 = { pole_position[0], pole_position[1]+0.03, pole_position[2] + 0.65};
       time = 10.0;
     }
     else if (mode == "lift_pole") {
-      position2 = { current_position[0], current_position[1], current_position[2] + 1.0 };
-      position3 = { current_position[0], current_position[1], current_position[2] + 1.0 };
+      position2 = { current_position[0], current_position[1]+0.03, current_position[2] + 1.0 };
+      position3 = { current_position[0], current_position[1]+0.03, current_position[2] + 1.0 };
       time = 8.0;
     }
     else {
