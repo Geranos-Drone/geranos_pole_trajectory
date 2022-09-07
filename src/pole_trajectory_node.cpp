@@ -34,7 +34,7 @@ namespace geranos_planner {
               tf::transformTFToEigen(tf_imu_base_, T_B_imu_);
               ROS_INFO_STREAM("[full_pose_waypoint] Found base to imu transform!");
             }
-          catch (tf::TransformException ex)
+          catch (tf::TransformException& ex)
             {
               ROS_ERROR("%s",ex.what());
             }
